@@ -1,15 +1,17 @@
 # Leads Are Not Findings
 
-**aevasec: what happened when I tried to turn static-analysis output into bug bounties, and measured it.**
+**aevasec: a Solidity audit workbench, and a measured answer to how much of what gets paid static analysis actually finds.**
 
-This repo is a small Solidity audit workbench and the record of an experiment. The idea was simple: run Slither on a protocol, rank the leads by how likely they are to be a paid bounty, and write proofs of concept for the best ones. I built that, then tested it against real code and independently judged findings. The ranking did not work. This README covers what was built, what the measurements showed, and why the project is on the back burner.
+aevasec takes a protocol from Slither output to evidence: it normalises and triages leads, builds a function-by-function review queue from the compiler AST, scaffolds Foundry proofs of concept, records review decisions, and scores a run against independently judged contest findings.
 
-**Status: paused.** The code works and the tests pass. No original vulnerability was found with it.
+It started as a tool for ranking Slither leads by bounty potential. Testing that idea against real code and judged findings showed the ranking does not work, and the project changed shape around what the evidence supported. This README covers what was built, what the measurements showed, and where it stands.
+
+**Status: working and tested; development paused.** It has reproduced three publicly judged vulnerabilities end to end. It has not yet been used to find a new one.
 
 ## The short version
 
-- A Slither detector stated the root cause of **1 of 20** judged High/Medium findings in a real audit contest.
-- The tool's own priority score ranked that one true lead **low**, and the leads it ranked high on two targets were **all false positives**.
+- Across three real audit contests, a Slither detector stated the root cause of **3 of 42** judged High/Medium findings.
+- The tool's own priority score put **none** of those three in its high bucket, and every lead it ranked high on Gearbox was a **false positive**.
 - The bugs that paid were logic, fee, unit and trust-model errors. Finding them took reading the code function by function, which no ranking of detector output replaces.
 - Three publicly judged findings were **reproduced with passing PoCs**, so the reproduce-and-report half of the workflow does work.
 
@@ -19,7 +21,7 @@ This repo is a small Solidity audit workbench and the record of an experiment. T
 
 **2. Test the top of the queue.** On Gearbox core v3 the tool produced 313 leads and ranked 5 high. I reviewed all 5 against source. Every one was a false positive: trusted callees, deliberate `try/catch` probes, and functions already protected by `nonReentrant`.
 
-**3. Test against judged findings.** To see whether the process could also be missing real issues, I ran it on the public Code4rena Caviar Private Pools contest, which has 3 High and 17 Medium judged findings. This was the first check against answers decided by someone else.
+**3. Test against judged findings.** To see whether the process could also be missing real issues, I ran it on three public Code4rena contests with 42 judged High/Medium findings between them: Caviar Private Pools, Wildcat and Kelp DAO. The second and third were picked on fixed criteria before any results were seen.
 
 **4. Reproduce.** I wrote Foundry PoCs for three of the judged Caviar findings against the unmodified contest contracts, each with a control.
 
@@ -28,15 +30,16 @@ This repo is a small Solidity audit workbench and the record of an experiment. T
 | Target | Result | Evidence |
 | --- | --- | --- |
 | Gearbox core v3 (313 Slither leads) | All 5 leads ranked high are false positives. 13 leads reviewed, none confirmed. | Source review; nothing executed |
-| Caviar (92 leads, 20 judged High/Medium) | A detector states the root cause of 1 of the 20 (M-02, `msg.value` in a loop). | Compared with the public judged report |
-| Caviar, aevasec scoring | The one true lead was Slither High; aevasec ranked it `low`. Its high and medium buckets held 4 leads, none judged. | Same comparison |
-| Caviar, review surface | All 20 judged findings sit in functions the `surface` command lists (26 state-changing, 14 view/pure). | Location only; this is not detection |
+| Caviar, Wildcat, Kelp (224 leads, 42 judged High/Medium) | A detector states the root cause of 3 of the 42: 1 of 20, 2 of 17 and 0 of 5. One of the three is borderline. | Compared with the public judged reports |
+| Same contests, aevasec scoring | Its high bucket held 3 leads, none judged. High plus medium held 14 leads, 1 judged. Slither's own High bucket held 8 leads, 2 judged. | Same comparison |
+| Same contests, review surface | 40 of 42 findings touch at least one function `surface` lists, but only 32 have all their linked functions in it. On Wildcat, bugs in internal and library functions are missed. | Location only; this is not detection |
 | Caviar H-01, M-02, M-03 | Reproduced with passing PoCs. H-01 drains a pool's 10 ETH. | PoC run, with controls |
 
 Three lessons came out of this:
 
-- **Detector leads are not a review plan.** They covered 5% of what was paid in the one contest measured.
+- **Detector leads are not a review plan.** They covered 7% of the judged findings across the three contests measured.
 - **Keyword scoring made things worse than raw Slither severity.** The score was wrong at the top of the queue on both targets. I did not retune it to fit the known answers, because that would only prove it can fit two examples. Treat `PoC priority` in the output as an unvalidated heuristic.
+- **Listing entrypoints is not enough either.** The review queue has to follow calls into internal and library functions, which is where nearly half of Wildcat's findings were. `surface` does not do that yet.
 - **A role name is not a trust decision.** The tool penalised `onlyOwner` functions as "trusted". In Caviar any user can become a pool owner, and that penalty hid a judged High.
 
 The two reproduced bugs that no detector saw are good examples of what reading finds: an external value read twice with an untrusted call in between (H-01), and a fee used in two places with different units (M-03). The [worked example](worked-examples/caviar-2023-04/README.md) walks through both, plus one top-ranked lead that fails and why.
@@ -50,7 +53,7 @@ Full numbers, method and reproduction commands are in [docs/triage-validation.md
 - **The entry-level market shrank.** Code4rena, the highest-volume contest platform for newcomers, [announced its wind-down in May 2026](https://www.theblock.co/news/regulation/2026-05-13-immufefi-absorb-code4rena-bug-bounty-customers-shutdown-decision-401179). Contests continue on other platforms, but they increasingly run automated analysis themselves, so anything a detector can state is found before a newcomer gets there.
 - **The payoff is slow.** Contest rewards are split among valid unique findings and are heavily skewed toward experienced researchers. As a part-time effort, the expected return did not justify the hours right now.
 
-If it is picked up again, the next step is one small live contest with a fixed time budget, hypotheses written before the judged results are published, and an honest comparison afterwards.
+If it is picked up again, the plan is in [docs/future-development.md](docs/future-development.md): extend the review queue to internal and library functions, add LLM review and invariant testing as lead sources that can reason about intent, keep PoCs as the filter, and measure on a contest recent enough to be a fair test.
 
 ## What is in the repo
 
@@ -66,13 +69,19 @@ If it is picked up again, the next step is one small live contest with a fixed t
 
 It is not a vulnerability finder, a static analyser, or a dashboard. It does not run Slither for you.
 
+## What you can build on
+
+- **A judged-findings benchmark.** `tests/judgedRecall.js` and the three fixtures in `fixtures/` measure any lead source against what a contest actually paid for. `scripts/buildJudgedFixture.js` generates a fixture from a Code4rena report, so adding a contest is mostly a scan and a labelling pass; swapping in a different analyser is one ingest module.
+- **A review queue from the AST.** `surface` needs only Foundry build-info, so it works on any Foundry project. The measured gap is internal and library functions; after that, per-function review tracking.
+- **PoC scaffolding tied to scope.** `poc` plus the `scope` block give a fork-ready Foundry skeleton that cannot pass until it proves something.
+- **A worked example to learn from.** Three real findings with PoCs, controls and the reasoning behind each.
+
 ## Limits of the evidence
 
-- One small contest and one audited protocol. The 1-in-20 figure may not generalise.
-- Root-cause labels for detector matches are one reviewer's judgement.
-- 17 of the 20 Caviar finding locations rest on the report text; only three were reproduced.
+- Three small contests from one platform and one audited protocol. The 3-in-42 figure may not generalise.
+- Root-cause labels for detector matches are one reviewer's judgement, and one of the three matches is borderline.
+- Only three of the 42 judged findings were reproduced with a PoC, all from Caviar. The rest rely on the report text.
 - The reproduced findings were already public. Nothing here shows the process finding a bug unaided.
-- Much of the code and analysis was written with AI coding assistants; the original build briefs are in `docs/history/`.
 
 ## Using it
 
@@ -200,7 +209,7 @@ node dist/cli.js surface <report.json>
 
 This writes `surface.md` and `surface.json` next to the report: every external/public function defined in the in-scope sources, with mutability, modifier names, line range, and the detector leads that fall inside it. It reads the solc ASTs in `<target>/<out>/build-info`, which Slither's compile step (or `forge build --build-info`) leaves behind. Without a declared `scope`, files under `lib`, `node_modules`, `test`, `script` and `mock` path components are dropped.
 
-The surface is a queue of code to read. It does not detect or rank anything, it does not list inherited entrypoints defined in out-of-scope files, and it does not yet record which functions have been reviewed. On the one judged contest measured so far, detectors stated the root cause of 1 of 20 High/Medium findings, so the detector queue alone is not a review plan; see [triage validation](docs/triage-validation.md).
+The surface is a queue of code to read. It does not detect or rank anything, it does not list internal or library functions or inherited entrypoints defined in out-of-scope files, and it does not yet record which functions have been reviewed. Across the three judged contests measured, detectors stated the root cause of 3 of 42 High/Medium findings, so the detector queue alone is not a review plan; see [triage validation](docs/triage-validation.md).
 
 `npm run benchmark:judged -- <report.json> <judged-fixture.json>` compares a saved run with independently judged findings such as `fixtures/caviar-2023-04-judged.json`.
 

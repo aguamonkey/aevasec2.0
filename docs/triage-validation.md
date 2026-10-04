@@ -64,6 +64,37 @@ The five leads ranked high in `validation-001` were reviewed against source at c
 
 The decisions are saved in the target's `.aevasec/reviews.json`. Re-ingesting into `validation-002` with the current heuristics gives 0 high, 173 medium, and 140 low, with identical finding identities. Top-of-queue precision on this target is therefore 0 of 5, and the current ranking produces no high bucket at all. Thirteen of 313 leads are reviewed; none is confirmed.
 
+## Judged-contest recall across three contests (2026-10-04)
+
+Two more contests were added after Caviar. They were chosen before any results were seen, on fixed criteria: a public Code4rena contest, a Foundry repo that builds, a primary judged report available as text, and a codebase small enough to label by hand. Wildcat and Kelp were the first two candidates tried and both were used.
+
+| | Caviar 2023-04 | Wildcat 2023-10 | Kelp 2023-11 | Total |
+| --- | --- | --- | --- | --- |
+| Judged High/Medium findings | 20 | 17 | 5 | 42 |
+| Slither leads | 92 | 105 | 27 | 224 |
+| Detector states a judged root cause | 1 | 2 | 0 | 3 (7%) |
+| aevasec high priority: leads / judged | 1 / 0 | 2 / 0 | 0 / 0 | 3 / 0 |
+| aevasec high + medium: leads / judged | 4 / 0 | 8 / 1 | 2 / 0 | 14 / 1 |
+| Slither High impact: leads / judged | 7 / 1 | 1 / 1 | 0 / 0 | 8 / 2 |
+| Slither High + Medium: leads / judged | 15 / 1 | 23 / 2 | 4 / 0 | 42 / 3 |
+| Findings with every linked function in the surface | 20 | 8 | 4 | 32 |
+| Findings with at least one linked function in the surface | 20 | 15 | 5 | 40 |
+
+What the two extra contests changed:
+
+- **The detector result held.** Three of 42 judged findings have a detector that states the root cause: Caviar M-02 (`msg-value-loop`), Wildcat M-11 (`unchecked-transfer`) and Wildcat M-06 (`unused-return`). M-06 is borderline: the detector reports an ignored return value and does not say the call can fail. Without it the total is 2 of 42.
+- **aevasec's score still adds nothing.** Its high bucket is 0 for 3 across the contests. On Wildcat it ranked the M-11 lead third of 105 (`medium`), its first correct placement, and ranked the M-06 lead `low`. Slither's own High bucket was 2 for 8.
+- **The surface is incomplete, which Caviar hid.** On Wildcat only 8 of 17 findings have every linked function in the surface, and 2 have none, because the bugs sit in internal and library functions (`_getUpdatedState`, `FeeMath`, `LibStoredInitCode`). The 20 of 20 on Caviar reflected that contract's flat structure. A reading queue has to include internal and library functions reachable from the entrypoints; `surface` does not do that yet.
+
+Method notes for the two new fixtures (`fixtures/wildcat-2023-10-judged.json`, `fixtures/kelp-2023-11-judged.json`):
+
+- `scripts/buildJudgedFixture.js` generated them from the primary `report.md`: IDs and titles from the headings, locations from the functions enclosing every source line a finding links to. `src/` is byte-identical between the commits the reports link and the pinned ones.
+- Linked functions include context as well as the defect, so "locations" is a superset of where the bug is. That makes the surface measure generous and the "lead in the same function" measure weak.
+- Three findings have no source links (Wildcat M-10, Kelp H-01 and H-02) and were located from the prose; they are marked `locationSource: "prose"`.
+- Detector labels were assigned by reading every lead co-located with each finding (`npm run benchmark:judged -- <report> <fixture> --worksheet`). They are one reviewer's judgement.
+- Kelp's `foundry.toml` points `src` at a directory that does not exist, so Slither was run with `--foundry-compile-all`. Both scans used `--filter-paths "lib|test|script|node_modules"`.
+- Nothing from Wildcat or Kelp was reproduced with a PoC.
+
 ## Judged-contest recall: Caviar Private Pools (2026-10-04)
 
 This is the first check against findings judged by someone else. The target is the public Code4rena 2023-04 Caviar repository at commit `5c87f7d6`, with 3 High and 17 Medium findings in the public report. Ground truth is `fixtures/caviar-2023-04-judged.json`. It was later checked against the primary report text: all 20 titles match, `src/` is byte-identical between the commit the report links and the pinned one, and three locations were corrected (M-10, M-12, M-13). The headline numbers did not change. One out-of-scope dependency (`reservoirprotocol/oracle`) no longer exists upstream and was replaced by a compile-only stub in the local checkout.
