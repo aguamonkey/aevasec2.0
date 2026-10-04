@@ -1,39 +1,84 @@
-# aevasec
+# Leads Are Not Findings
 
-`aevasec` is a local, Mac-first workbench for Solidity audit work. It ingests Slither JSON, builds a function-level review queue, scaffolds Foundry PoCs, and records review decisions. It began as a tool for ranking Slither leads; the measurements below are why it no longer treats that ranking as the audit.
+**aevasec: what happened when I tried to turn static-analysis output into bug bounties, and measured it.**
 
-## What we found
+This repo is a small Solidity audit workbench and the record of an experiment. The idea was simple: run Slither on a protocol, rank the leads by how likely they are to be a paid bounty, and write proofs of concept for the best ones. I built that, then tested it against real code and independently judged findings. The ranking did not work. This README covers what was built, what the measurements showed, and why the project is on the back burner.
 
-These are the results so far, with the kind of evidence behind each. Details and reproduction commands are in [docs/triage-validation.md](docs/triage-validation.md).
+**Status: paused.** The code works and the tests pass. No original vulnerability was found with it.
+
+## The short version
+
+- A Slither detector stated the root cause of **1 of 20** judged High/Medium findings in a real audit contest.
+- The tool's own priority score ranked that one true lead **low**, and the leads it ranked high on two targets were **all false positives**.
+- The bugs that paid were logic, fee, unit and trust-model errors. Finding them took reading the code function by function, which no ranking of detector output replaces.
+- Three publicly judged findings were **reproduced with passing PoCs**, so the reproduce-and-report half of the workflow does work.
+
+## How it went
+
+**1. Rank Slither leads.** The first version ingested Slither JSON, scored each lead with keyword heuristics (who can reach it, what impact the detector text implies, whether the code changed recently), applied a bounty programme's severity gate, and wrote a review packet per lead.
+
+**2. Test the top of the queue.** On Gearbox core v3 the tool produced 313 leads and ranked 5 high. I reviewed all 5 against source. Every one was a false positive: trusted callees, deliberate `try/catch` probes, and functions already protected by `nonReentrant`.
+
+**3. Test against judged findings.** To see whether the process could also be missing real issues, I ran it on the public Code4rena Caviar Private Pools contest, which has 3 High and 17 Medium judged findings. This was the first check against answers decided by someone else.
+
+**4. Reproduce.** I wrote Foundry PoCs for three of the judged Caviar findings against the unmodified contest contracts, each with a control.
+
+## What the measurements showed
 
 | Target | Result | Evidence |
 | --- | --- | --- |
-| Gearbox core v3 (313 Slither leads) | All 5 leads the tool ranked high are false positives. 13 leads reviewed, none confirmed. | Source review; nothing executed |
-| Caviar Private Pools, Code4rena 2023-04 (92 leads, 20 judged High/Medium findings) | A Slither detector states the root cause of 1 of the 20 (M-02). The other 19 are logic, fee, cast and trust-model bugs with no detector. | Compared with the public judged report |
+| Gearbox core v3 (313 Slither leads) | All 5 leads ranked high are false positives. 13 leads reviewed, none confirmed. | Source review; nothing executed |
+| Caviar (92 leads, 20 judged High/Medium) | A detector states the root cause of 1 of the 20 (M-02, `msg.value` in a loop). | Compared with the public judged report |
 | Caviar, aevasec scoring | The one true lead was Slither High; aevasec ranked it `low`. Its high and medium buckets held 4 leads, none judged. | Same comparison |
 | Caviar, review surface | All 20 judged findings sit in functions the `surface` command lists (26 state-changing, 14 view/pure). | Location only; this is not detection |
-| Caviar H-01, M-02, M-03 | Reproduced with passing PoCs against the unmodified contest contracts. H-01 drains a pool's 10 ETH. | PoC run, with controls |
+| Caviar H-01, M-02, M-03 | Reproduced with passing PoCs. H-01 drains a pool's 10 ETH. | PoC run, with controls |
 
-What follows from this:
+Three lessons came out of this:
 
-- **Detector leads are not a review plan.** On the one judged contest measured, they covered 5% of what was paid.
-- **The keyword score has no measured value.** It was wrong at the top of the queue on both targets and has not been retuned to fit them. Treat `PoC priority` as an unvalidated heuristic.
-- **A role name is not a trust decision.** The `onlyOwner` penalty hid a judged High in Caviar, where any user can become a pool owner.
-- **No original vulnerability has been found.** The three reproduced findings were already public. Whether this process finds bugs unaided is untested.
+- **Detector leads are not a review plan.** They covered 5% of what was paid in the one contest measured.
+- **Keyword scoring made things worse than raw Slither severity.** The score was wrong at the top of the queue on both targets. I did not retune it to fit the known answers, because that would only prove it can fit two examples. Treat `PoC priority` in the output as an unvalidated heuristic.
+- **A role name is not a trust decision.** The tool penalised `onlyOwner` functions as "trusted". In Caviar any user can become a pool owner, and that penalty hid a judged High.
 
-The practical workflow is therefore: run `surface`, read each function, use detector leads as hints, and prove anything promising with a PoC. The [Caviar worked example](worked-examples/caviar-2023-04/README.md) shows what that evidence looks like and why one top-ranked lead fails.
+The two reproduced bugs that no detector saw are good examples of what reading finds: an external value read twice with an untrusted call in between (H-01), and a fee used in two places with different units (M-03). The [worked example](worked-examples/caviar-2023-04/README.md) walks through both, plus one top-ranked lead that fails and why.
 
-Limits: one small contest and one audited protocol; root-cause labels are one reviewer's judgement; 17 of the 20 Caviar locations rest on the report text.
+Full numbers, method and reproduction commands are in [docs/triage-validation.md](docs/triage-validation.md).
 
-## What it is not
+## Why it is on the back burner
 
-- It is not a vulnerability finder. It organises review and evidence.
-- It is not a web dashboard.
-- It is not a custom Solidity static analyzer.
-- It does not run Slither internally yet.
-- It does not add symbolic execution, fuzzing, a database, SaaS/server code, or plugin architecture.
+- **The core idea did not hold up.** The project was built to rank detector leads, and the evidence says that ranking has no value on the targets tested. What remains useful is bookkeeping around manual review.
+- **The untested part is the expensive part.** The open question is whether function-by-function review with this workflow finds bugs unaided. Answering it means a blind review of a live contest, which takes concentrated hours over a one-to-four-week window.
+- **The entry-level market shrank.** Code4rena, the highest-volume contest platform for newcomers, [announced its wind-down in May 2026](https://www.theblock.co/news/regulation/2026-05-13-immufefi-absorb-code4rena-bug-bounty-customers-shutdown-decision-401179). Contests continue on other platforms, but they increasingly run automated analysis themselves, so anything a detector can state is found before a newcomer gets there.
+- **The payoff is slow.** Contest rewards are split among valid unique findings and are heavily skewed toward experienced researchers. As a part-time effort, the expected return did not justify the hours right now.
 
-## Install and build
+If it is picked up again, the next step is one small live contest with a fixed time budget, hypotheses written before the judged results are published, and an honest comparison afterwards.
+
+## What is in the repo
+
+| Piece | What it does |
+| --- | --- |
+| `ingest slither` | Normalises Slither JSON, applies suppressions and a bounty gate, writes `report.md`, `report.json` and per-lead packets |
+| `surface` | Lists every external/public function in scope from the compiler AST, with modifiers and attached leads: the reading queue |
+| `poc` | Writes a Foundry test scaffold for a lead that fails until a real PoC is written |
+| `review` | Records a reviewer's decision on a lead, tied to the target commit |
+| `tests/judgedRecall.js` | Scores a saved run against independently judged findings |
+| `worked-examples/caviar-2023-04` | Three reproduced judged findings and one failed lead, explained |
+| `tests/exploits` | Synthetic Foundry fixtures that check the PoC harness itself |
+
+It is not a vulnerability finder, a static analyser, or a dashboard. It does not run Slither for you.
+
+## Limits of the evidence
+
+- One small contest and one audited protocol. The 1-in-20 figure may not generalise.
+- Root-cause labels for detector matches are one reviewer's judgement.
+- 17 of the 20 Caviar finding locations rest on the report text; only three were reproduced.
+- The reproduced findings were already public. Nothing here shows the process finding a bug unaided.
+- Much of the code and analysis was written with AI coding assistants; the original build briefs are in `docs/history/`.
+
+## Using it
+
+Requires Node (developed on v22), [Slither](https://github.com/crytic/slither) and [Foundry](https://book.getfoundry.sh/).
+
+### Install and build
 
 ```bash
 npm install
@@ -41,7 +86,7 @@ npm run build
 npm run typecheck
 ```
 
-## Example ingest command
+### Example ingest command
 
 ```bash
 node dist/cli.js ingest slither ./fixtures/slither-sample.json \
@@ -55,7 +100,7 @@ If `--target` is omitted, it defaults to the current working directory. If `--ou
 If `--bounty` is omitted, `aevasec` looks for `<target>/.aevasec/bounty.json`; if that is missing, it uses a conservative Medium+ default.
 If `--changes-from` is provided, `aevasec` compares that git ref to `HEAD` in the target repo and annotates packets with recent-change context.
 
-## Output files
+### Output files
 
 The ingest command writes:
 
@@ -74,7 +119,7 @@ Packets include source-aware Solidity context when the Slither finding maps to a
 Packets also include bounty-aware triage fields: flagged pattern, external reachability, privilege assumptions, affected asset/state, bounty actionability, likely bounty severity, PoC priority, and the smallest next PoC if the packet is worth pursuing.
 When `--changes-from` is enabled, packets also show whether the lead was overlapping, touching, near, or outside the recent Solidity diff. Overlap does not prove a finding was introduced by the change. Risky recent changes such as new external entrypoints, removed guards, new external calls, accounting mutations, dependency/oracle config changes, and upgradeability/storage-sensitive changes can boost PoC priority.
 
-## Bounty gate format
+### Bounty gate format
 
 The bounty gate is intentionally small and target-specific:
 
@@ -108,11 +153,11 @@ A bare path matches everything beneath it; `*` matches within one path component
 
 This layer ranks packets for manual review. It does not prove exploitability, and it does not treat Slither severity as bounty severity.
 
-## Bounty dry run
+### Bounty dry run
 
 See [docs/bounty-dry-run.md](docs/bounty-dry-run.md) for a practical workflow for running Slither externally, ingesting the JSON output, reviewing reports, and using packets as leads.
 
-## Suppression format
+### Suppression format
 
 Suppressions are read from:
 
@@ -139,11 +184,7 @@ Example:
 
 A finding is suppressed only when the fingerprint and rule ID both match and the suppression is not expired.
 
-## Next phase
-
-Internal Slither execution is still intentionally not implemented. This v1 supports only direct ingestion of existing Slither JSON.
-
-## Review and validation
+### Review and validation
 
 Bounty fields are heuristic hypotheses. Actionability remains `unclear` pending manual validation; low priority does not automatically skip a lead. Role labels use the local declaration, and unknown reachability stays `unclear`. Exclusions and deployment assumptions are displayed for manual scope review.
 
@@ -151,7 +192,7 @@ Run `npm test` for the regression and CLI workflow checks, or `npm run benchmark
 
 Save reviewer notes using `node dist/cli.js review <report.json> <finding-id> <classification> --notes <text> [--poc <reference>]`, then re-ingest. Use `--previous <report.json>` to compare exact finding identities between runs. Reports record current target commit, tracked dirty state, and scan input hash; these do not independently prove the external scan's source commit.
 
-## Review surface
+### Review surface
 
 ```bash
 node dist/cli.js surface <report.json>
@@ -163,11 +204,7 @@ The surface is a queue of code to read. It does not detect or rank anything, it 
 
 `npm run benchmark:judged -- <report.json> <judged-fixture.json>` compares a saved run with independently judged findings such as `fixtures/caviar-2023-04-judged.json`.
 
-## Worked example
-
-[worked-examples/caviar-2023-04](worked-examples/caviar-2023-04/README.md) reproduces three publicly judged findings against the real contest contracts and explains one detector lead that fails. Start there to see what evidence for a finding looks like.
-
-## PoC scaffold
+### PoC scaffold
 
 ```bash
 node dist/cli.js poc <report.json> <finding-id> [--fork-rpc-env ETH_RPC_URL] [--fork-block <number>] [--out <file>] [--force]

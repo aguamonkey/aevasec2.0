@@ -1,7 +1,7 @@
 {
   "name": "aevasec",
   "version": "0.1.0",
-  "description": "Local Solidity audit triage orchestrator.",
+  "description": "Solidity audit workbench and a measured post-mortem of ranking static-analysis leads for bug bounties.",
   "license": "MIT",
   "type": "commonjs",
   "main": "dist/cli.js",
