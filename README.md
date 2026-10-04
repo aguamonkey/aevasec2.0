@@ -1,11 +1,33 @@
 # aevasec
 
-`aevasec` is a local Mac-first Solidity audit triage orchestrator. It ingests external tool output, normalizes findings, applies suppression memory, writes reports, and generates focused AI review packets.
+`aevasec` is a local, Mac-first workbench for Solidity audit work. It ingests Slither JSON, builds a function-level review queue, scaffolds Foundry PoCs, and records review decisions. It began as a tool for ranking Slither leads; the measurements below are why it no longer treats that ranking as the audit.
 
-The first supported ingestion source is Slither JSON.
+## What we found
+
+These are the results so far, with the kind of evidence behind each. Details and reproduction commands are in [docs/triage-validation.md](docs/triage-validation.md).
+
+| Target | Result | Evidence |
+| --- | --- | --- |
+| Gearbox core v3 (313 Slither leads) | All 5 leads the tool ranked high are false positives. 13 leads reviewed, none confirmed. | Source review; nothing executed |
+| Caviar Private Pools, Code4rena 2023-04 (92 leads, 20 judged High/Medium findings) | A Slither detector states the root cause of 1 of the 20 (M-02). The other 19 are logic, fee, cast and trust-model bugs with no detector. | Compared with the public judged report |
+| Caviar, aevasec scoring | The one true lead was Slither High; aevasec ranked it `low`. Its high and medium buckets held 4 leads, none judged. | Same comparison |
+| Caviar, review surface | All 20 judged findings sit in functions the `surface` command lists (26 state-changing, 14 view/pure). | Location only; this is not detection |
+| Caviar H-01, M-02, M-03 | Reproduced with passing PoCs against the unmodified contest contracts. H-01 drains a pool's 10 ETH. | PoC run, with controls |
+
+What follows from this:
+
+- **Detector leads are not a review plan.** On the one judged contest measured, they covered 5% of what was paid.
+- **The keyword score has no measured value.** It was wrong at the top of the queue on both targets and has not been retuned to fit them. Treat `PoC priority` as an unvalidated heuristic.
+- **A role name is not a trust decision.** The `onlyOwner` penalty hid a judged High in Caviar, where any user can become a pool owner.
+- **No original vulnerability has been found.** The three reproduced findings were already public. Whether this process finds bugs unaided is untested.
+
+The practical workflow is therefore: run `surface`, read each function, use detector leads as hints, and prove anything promising with a PoC. The [Caviar worked example](worked-examples/caviar-2023-04/README.md) shows what that evidence looks like and why one top-ranked lead fails.
+
+Limits: one small contest and one audited protocol; root-cause labels are one reviewer's judgement; 17 of the 20 Caviar locations rest on the report text.
 
 ## What it is not
 
+- It is not a vulnerability finder. It organises review and evidence.
 - It is not a web dashboard.
 - It is not a custom Solidity static analyzer.
 - It does not run Slither internally yet.
