@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 
 export type SourceWindowParams = {
@@ -45,14 +45,22 @@ export async function readSourceWindow(params: SourceWindowParams): Promise<Sour
     return unavailable("source file is outside target path");
   }
 
+  if (!Number.isInteger(params.lineStart) || params.lineStart < 1 || !Number.isInteger(contextLines) || contextLines < 0 ||
+      (params.lineEnd !== undefined && (!Number.isInteger(params.lineEnd) || params.lineEnd < params.lineStart))) return unavailable("invalid source range");
+
   let raw: string;
   try {
-    raw = await readFile(filePath, "utf8");
+    const realRoot = await realpath(targetRoot);
+    const realFile = await realpath(filePath);
+    const relativeReal = path.relative(realRoot, realFile);
+    if (relativeReal.startsWith("..") || path.isAbsolute(relativeReal)) return unavailable("source symlink is outside target path");
+    raw = await readFile(realFile, "utf8");
   } catch {
     return unavailable(`cannot read source file: ${params.relativeFile}`);
   }
 
   const lines = raw.split(/\r?\n/);
+  if (params.lineStart > lines.length) return unavailable("source range is beyond file; scan may be stale");
   const requestedEnd = params.lineEnd ?? params.lineStart;
   const startLine = Math.max(1, params.lineStart - contextLines);
   const endLine = Math.min(lines.length, requestedEnd + contextLines);

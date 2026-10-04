@@ -1,3 +1,4 @@
+import { isObject } from "../validation/input";
 import { access } from "node:fs/promises";
 import path from "node:path";
 import { AevaFinding } from "../types/finding";
@@ -26,7 +27,12 @@ export async function loadSuppressions(targetPath: string): Promise<SuppressionI
   }
 
   const suppressionFile = await readJsonFile<SuppressionFile>(suppressionPath);
-  return suppressionFile.items ?? [];
+  if (!isObject(suppressionFile) || suppressionFile.schemaVersion !== "1.0" || !Array.isArray(suppressionFile.items)) throw new Error("Invalid suppressions file");
+  for (const item of suppressionFile.items) {
+    if (!isObject(item) || typeof item.fingerprint !== "string" || typeof item.ruleId !== "string" || typeof item.reason !== "string" ||
+        (item.expiresAt !== undefined && item.expiresAt !== null && (typeof item.expiresAt !== "string" || !Number.isFinite(Date.parse(item.expiresAt))))) throw new Error("Invalid suppression entry or expiry");
+  }
+  return suppressionFile.items;
 }
 
 export function applySuppressions(findings: AevaFinding[], suppressions: SuppressionItem[]): AevaFinding[] {

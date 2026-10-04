@@ -1,0 +1,194 @@
+{
+  "schemaVersion": "1.0",
+  "contest": "Code4rena 2023-04 Caviar Private Pools",
+  "repository": "https://github.com/code-423n4/2023-04-caviar",
+  "commit": "5c87f7d69c6fac29eb253b5c7b2fb4a9f23f8750",
+  "source": "https://code4rena.com/reports/2023-04-caviar",
+  "provenance": "IDs and titles were first extracted through an automated page summary, then on 2026-10-04 checked against the primary report text (https://github.com/code-423n4/2023-04-caviar-findings/blob/main/report.md): all 20 titles match. Locations were checked against the source links in each report section; three were corrected (M-10, M-12, M-13). Sections with no source link (M-02, M-11, M-16) and H-02 rely on the function named in the report prose. The report links commit cd8a9266; src/ is byte-identical at the pinned commit. detectorRootCause labels are one reviewer's judgement: a lead counts only when the detector text states the judged root cause. 'reproduced' marks findings with a passing PoC in worked-examples/caviar-2023-04.",
+  "findings": [
+    {
+      "id": "H-01",
+      "title": "Royalty receiver can drain a private pool",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "buy"
+      ],
+      "reproduced": "worked-examples/caviar-2023-04/poc"
+    },
+    {
+      "id": "H-02",
+      "title": "PrivatePool owner can steal all ERC20 and NFT from user via arbitrary execution",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "execute"
+      ],
+      "detectorPartial": [
+        {
+          "ruleId": "SLITHER:low-level-calls",
+          "function": "execute",
+          "basis": "Flags the arbitrary low-level call site. Does not state that user approvals to the pool make it a theft path."
+        }
+      ]
+    },
+    {
+      "id": "H-03",
+      "title": "Risk of silent overflow in reserves update",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "M-01",
+      "title": "The buy function's mechanism enables users to acquire flash loans at a cheaper fee rate",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "buy"
+      ]
+    },
+    {
+      "id": "M-02",
+      "title": "EthRouter can't perform multiple changes",
+      "file": "src/EthRouter.sol",
+      "functions": [
+        "change"
+      ],
+      "detectorRootCause": [
+        {
+          "ruleId": "SLITHER:msg-value-loop",
+          "function": "change",
+          "basis": "Detector reports msg.value forwarded inside the loop, which is the judged root cause."
+        }
+      ],
+      "reproduced": "worked-examples/caviar-2023-04/poc"
+    },
+    {
+      "id": "M-03",
+      "title": "Flash loan fee is incorrect in Private Pool contract",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "flashFee"
+      ],
+      "reproduced": "worked-examples/caviar-2023-04/poc"
+    },
+    {
+      "id": "M-04",
+      "title": "changeFeeQuote will fail for low decimal ERC20 tokens",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "changeFeeQuote"
+      ]
+    },
+    {
+      "id": "M-05",
+      "title": "EthRouter.sell, EthRouter.deposit, and EthRouter.change functions can be DOS'ed for some ERC721 tokens",
+      "file": "src/EthRouter.sol",
+      "functions": [
+        "sell",
+        "deposit",
+        "change"
+      ]
+    },
+    {
+      "id": "M-06",
+      "title": "Flashloan fee is not distributed to the factory",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "flashLoan"
+      ]
+    },
+    {
+      "id": "M-07",
+      "title": "Royalty recipients will not get fair share of royalties",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "M-08",
+      "title": "Loss of funds for traders due to accounting error in royalty calculations",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "buy",
+        "sell"
+      ]
+    },
+    {
+      "id": "M-09",
+      "title": "Malicious royalty recipient can steal excess eth from buy orders",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "buy"
+      ]
+    },
+    {
+      "id": "M-10",
+      "title": "Incorrect protocol fee is taken when changing NFTs",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "changeFeeQuote"
+      ]
+    },
+    {
+      "id": "M-11",
+      "title": "Factory.create: Predictability of pool address creates multiple issues",
+      "file": "src/Factory.sol",
+      "functions": [
+        "create"
+      ]
+    },
+    {
+      "id": "M-12",
+      "title": "Prohibition to create private pools with the factory NFT",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "flashLoan",
+        "withdraw"
+      ]
+    },
+    {
+      "id": "M-13",
+      "title": "Transaction revert if the baseToken does not support 0 value transfer when charging changeFee",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "change",
+        "flashLoan"
+      ]
+    },
+    {
+      "id": "M-14",
+      "title": "The royaltyRecipient could not be prepare to receive ether, making the sell to fail",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "sell"
+      ]
+    },
+    {
+      "id": "M-15",
+      "title": "Pool tokens can be stolen via PrivatePool.flashLoan function from previous owner",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "flashLoan"
+      ]
+    },
+    {
+      "id": "M-16",
+      "title": "PrivatePool.flashLoan() takes fee from the wrong address",
+      "file": "src/PrivatePool.sol",
+      "functions": [
+        "flashLoan"
+      ]
+    },
+    {
+      "id": "M-17",
+      "title": "The tokenURI method does not check if the NFT has been minted and returns data for the contract that may be a fake NFT",
+      "file": "src/PrivatePoolMetadata.sol",
+      "functions": [
+        "tokenURI"
+      ]
+    }
+  ]
+}

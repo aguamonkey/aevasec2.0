@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "minimumPaidSeverity": "MEDIUM",
+  "excludedImpacts": [
+    "Low/Informational event-only issues",
+    "malicious or non-standard WETH/token/oracle dependency behavior",
+    "trusted owner/governance/deployer actions without role compromise"
+  ],
+  "dependencyConfigAssumptions": [
+    "canonical WETH is deployed and returns standard ERC-20 success semantics",
+    "oracle and token dependencies are not malicious unless the deployed target accepts them"
+  ],
+  "privilegedRoleAssumptions": [
+    "owner/governance/deployer are trusted",
+    "brokers, keepers, and rebalancers are trusted unless attacker role acquisition is shown"
+  ],
+  "skipLowInformational": true
+}

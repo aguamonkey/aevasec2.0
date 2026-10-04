@@ -1,6 +1,11 @@
 node_modules/
 dist/
 reports/
+targets/
 aevasec-report/
 .DS_Store
 .env
+tests/exploits/lib/
+tests/exploits/*/out/
+tests/exploits/*/cache/
+tests/exploits/.tmp-poc-*/

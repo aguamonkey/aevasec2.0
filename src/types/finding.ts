@@ -28,6 +28,38 @@ export type TriageClassification =
   | "NEEDS_CONTEXT"
   | "OUT_OF_SCOPE";
 
+export type RoleReachability =
+  | "unclear"
+  | "unprivileged user reachable"
+  | "whitelisted/approved user reachable"
+  | "trusted keeper/broker/rebalancer reachable"
+  | "owner/governance/deployer only"
+  | "dependency/config-only"
+  | "test/reader/oracle/dependency out of scope"
+  | "outside declared bounty scope";
+
+export type ImpactCategory =
+  | "direct asset loss"
+  | "stuck funds"
+  | "unauthorized accounting/state change"
+  | "persistent DoS"
+  | "liquidation/solvency impact"
+  | "oracle/price manipulation"
+  | "bounded griefing"
+  | "event/indexer noise"
+  | "no concrete impact found";
+
+export type BountyActionability = "yes" | "no" | "unclear";
+
+export type PocPriority = "high" | "medium" | "low" | "skip";
+
+export type RecentChangeStatus =
+  | "overlaps recent diff"
+  | "touched by recent diff"
+  | "near recent diff"
+  | "pre-existing"
+  | "unavailable";
+
 export type AevaFinding = {
   id: string;
   schemaVersion: "1.0";
@@ -83,5 +115,41 @@ export type AevaFinding = {
   triage?: {
     classification?: TriageClassification;
     notes?: string;
+    review?: { classification: TriageClassification; notes: string; reviewedAt: string; targetCommit?: string; pocReference?: string };
+    recentChange?: {
+      status: RecentChangeStatus;
+      baseRef?: string;
+      headRef?: string;
+      filesChanged: number;
+      changedRanges: Array<{
+        file: string;
+        lineStart: number;
+        lineEnd: number;
+      }>;
+      riskPatterns: string[];
+      summary: string;
+      scoreBoost: number;
+    };
+    bounty?: {
+      assessment: "heuristic";
+      evidence: string[];
+      limitations: string[];
+      flaggedPattern: string;
+      externalReachability: RoleReachability[];
+      privilegeAssumptions: string[];
+      affectedAssetState: string;
+      impact: ImpactCategory[];
+      bountyActionability: BountyActionability;
+      likelySeverity: AevaSeverity | "NONE" | "UNCLEAR";
+      pocPriority: PocPriority;
+      score: number;
+      scoreReasons: string[];
+      smallestNextPoc: string;
+      gate: {
+        minimumPaidSeverity: AevaSeverity;
+        skipLowInformational: boolean;
+        source: "config" | "default";
+      };
+    };
   };
 };

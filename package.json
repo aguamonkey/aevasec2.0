@@ -7,7 +7,11 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "start": "node dist/cli.js"
+    "test": "npm run build && node tests/bountyTriage.test.js && node tests/recentChanges.test.js && node tests/workflow.test.js && node tests/exploitValidation.test.js && node tests/poc.test.js && node tests/benchmark.test.js",
+    "start": "node dist/cli.js",
+    "test:exploits": "sh tests/exploits/run.sh",
+    "benchmark:judged": "node tests/judgedRecall.js",
+    "benchmark": "npm run build && node tests/benchmark.test.js"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
