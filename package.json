@@ -2,6 +2,7 @@
   "name": "aevasec",
   "version": "0.1.0",
   "description": "Local Solidity audit triage orchestrator.",
+  "license": "MIT",
   "type": "commonjs",
   "main": "dist/cli.js",
   "scripts": {

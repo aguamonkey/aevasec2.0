@@ -147,7 +147,7 @@ Internal Slither execution is still intentionally not implemented. This v1 suppo
 
 Bounty fields are heuristic hypotheses. Actionability remains `unclear` pending manual validation; low priority does not automatically skip a lead. Role labels use the local declaration, and unknown reachability stays `unclear`. Exclusions and deployment assumptions are displayed for manual scope review.
 
-Run `npm test` for the regression and CLI workflow checks, or `npm run benchmark` for the eight-case Gearbox source-review benchmark. See [triage validation](docs/triage-validation.md) for results, limitations, saved-review commands, and run comparisons.
+Run `npm test` for the regression and CLI workflow checks, or `npm run benchmark` for the eight-case Gearbox source-review benchmark (it needs a local gearbox-core-v3 checkout and is skipped without one). See [triage validation](docs/triage-validation.md) for results, limitations, saved-review commands, and run comparisons.
 
 Save reviewer notes using `node dist/cli.js review <report.json> <finding-id> <classification> --notes <text> [--poc <reference>]`, then re-ingest. Use `--previous <report.json>` to compare exact finding identities between runs. Reports record current target commit, tracked dirty state, and scan input hash; these do not independently prove the external scan's source commit.
 
@@ -178,3 +178,7 @@ This writes a Foundry test skeleton to `<target>/<test dir>/aevasec/<FindingId>P
 `npm run test:exploits` runs the Foundry fixtures in `tests/exploits/` (it fetches a pinned forge-std into `tests/exploits/lib/` on first use). `npm test` checks that a generated scaffold compiles and fails when forge and that forge-std checkout are present.
 
 Explicitly missing bounty files and malformed input/configuration fail with an error. Reusing an output directory removes obsolete generated `slither-N.md` packets and preserves other filenames.
+
+## Licence and third-party code
+
+aevasec is released under the [MIT licence](LICENSE). It does not include source from the protocols it has been run against; fixtures hold locations, detector output and review notes. The PoCs in `worked-examples/` are original test code that imports the public contest repository, which you clone separately. `docs/history/` holds the original build briefs.

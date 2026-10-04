@@ -4,7 +4,7 @@ The tool now treats bounty triage as a heuristic review order. It does not prove
 
 ## Gearbox source-review benchmark
 
-`fixtures/gearbox-review-benchmark.json` contains eight selected real Slither leads and exact source excerpts from gearbox-core-v3 commit `b038597d9070d9fd18593a6ae9c3d28ca931bb73`. Reviews were performed through agent source inspection. No case is a confirmed vulnerability, and no exploit PoC was run. `KNOWN_PATTERN` refers only to the reviewed detector pattern, not a security guarantee for the enclosing function.
+`fixtures/gearbox-review-benchmark.json` contains eight selected real Slither leads from gearbox-core-v3 commit `b038597d9070d9fd18593a6ae9c3d28ca931bb73`. It stores locations and review conclusions only; the target's source is BUSL-1.1 licensed and is read from a local checkout. Reviews were performed through agent source inspection. No case is a confirmed vulnerability, and no exploit PoC was run. `KNOWN_PATTERN` refers only to the reviewed detector pattern, not a security guarantee for the enclosing function.
 
 | Lead | Source-review conclusion | Previous priority | New priority |
 | --- | --- | --- | --- |
@@ -17,7 +17,7 @@ The tool now treats bounty triage as a heuristic review order. It does not prove
 | slither-16 | Staking withdrawal callbacks require review | skip | medium |
 | slither-92 | Internal voting loop requires caller/failure analysis | skip | low |
 
-Run `npm run benchmark` to reproduce these priorities without cloning the target. The benchmark excludes Git score boosts to isolate local triage behavior. The previous priorities come from the existing saved report and included its scan configuration; they are historical observations, not a controlled before/after experiment.
+Run `npm run benchmark` with gearbox-core-v3 cloned at that commit into `targets/gearbox-core-v3` (or set `AEVASEC_GEARBOX_TARGET`); without a checkout the benchmark is skipped. The benchmark excludes Git score boosts to isolate local triage behavior. The previous priorities come from the existing saved report and included its scan configuration; they are historical observations, not a controlled before/after experiment.
 
 Two selected uncertain callback leads previously skipped now remain in review. Removing automatic skips makes this property true by design, so it does not measure vulnerability recall. The intentionally ignored tuple component still ranks medium: noise reduction needs further calibration.
 
